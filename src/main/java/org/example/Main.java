@@ -5,6 +5,9 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 import java.util.Scanner;
 
 class Main {
@@ -12,18 +15,20 @@ class Main {
     private static final String TEST_URL = "https://jsonplaceholder.typicode.com/users";
     private static final String UPDATE_URL = "https://jsonplaceholder.typicode.com/users/1";
     private static final String DELETE_URL = "https://jsonplaceholder.typicode.com/users/2";
+    private static final String BASE_URL = "https://jsonplaceholder.typicode.com/posts";
 //private static final String TEST_URL = " http://[::1]:3000/posts";
 //    private static final String UPDATE_URL = "http://[::1]:3000/posts/1";
 
     public static void main(String[] args) throws Exception {
         try {
-            sendPost();
-            sendGET();
-            sendDelete();
-            sendSearch();
-            sendPut();
-            sendSearchUserName();
-
+//            sendPost();
+//            sendGET();
+//            sendDelete();
+//            sendSearch();
+//            sendPut();
+//            sendSearchUserName();
+//            sendSearchAllComment();
+            sendTodos();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -178,4 +183,102 @@ class Main {
             System.out.println("There is no such ID");
         }
     }
+
+    private static void sendSearchAllComment() throws IOException {
+        Scanner scanner = new Scanner(System.in);
+        System.out.println("What Id User for Post you search?");
+        int userId = scanner.nextInt();
+
+        URL url = new URL(TEST_URL + "/" + userId + "/posts");
+        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+        connection.setRequestMethod("GET");
+        int responseCode = connection.getResponseCode();
+
+        if (responseCode == HttpURLConnection.HTTP_OK) {
+            BufferedReader in =
+                    new BufferedReader(
+                            new InputStreamReader(connection.getInputStream()));
+            String inputLine;
+            StringBuffer response = new StringBuffer();
+            while ((inputLine = in.readLine()) != null) {
+                response.append(inputLine);
+            }
+            in.close();
+            JSONArray postArray = new JSONArray(response.toString());
+
+            int msxId = -1;
+            JSONObject maxPost = null;
+            for (int i = 0; i < postArray.length(); i++) {
+                JSONObject post = postArray.getJSONObject(i);
+                int postID = post.getInt("id");
+                if (postID > msxId) {
+                    msxId = postID;
+                    maxPost = post;
+                }
+            }
+
+            URL urlComment = new URL(BASE_URL + "/" + msxId + "/comments");
+
+            HttpURLConnection connectionComment = (HttpURLConnection) urlComment.openConnection();
+            connectionComment.setRequestMethod("GET");
+            int responseCodeComment = connectionComment.getResponseCode();
+
+            if (responseCodeComment == HttpURLConnection.HTTP_OK) {
+                BufferedReader inCo =
+                        new BufferedReader(
+                                new InputStreamReader(connectionComment.getInputStream()));
+                String inputLineComment;
+                StringBuffer responseCo = new StringBuffer();
+                while ((inputLineComment = inCo.readLine()) != null) {
+                    responseCo.append(inputLineComment);    //this is content for json.file
+                }
+                inCo.close();
+
+                String fileName = "user-" + userId + "-post-" + msxId + "-comments.json";
+
+                try (BufferedWriter writer = new BufferedWriter(new FileWriter(fileName))) {
+                    writer.write(responseCo.toString());
+                    System.out.println("Comment file create " + fileName);
+                } catch (IOException e) {
+                    System.out.println(e.getMessage());
+                }
+        }
+
     }
+    }
+
+    private static void sendTodos() throws IOException {
+        Scanner scanner = new Scanner(System.in);
+        System.out.println("Select Id User for task:");
+        int userId = scanner.nextInt();
+
+        URL url = new URL(TEST_URL + "/" + userId + "/todos");
+        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+        connection.setRequestMethod("GET");
+        int responseCode = connection.getResponseCode();
+
+        if (responseCode == HttpURLConnection.HTTP_OK) {
+            BufferedReader in =
+                    new BufferedReader(
+                            new InputStreamReader(connection.getInputStream()));
+            String inputLine;
+            StringBuffer response = new StringBuffer();
+            while ((inputLine = in.readLine()) != null) {
+                response.append(inputLine);
+            }
+            in.close();
+
+            JSONArray todosArray = new JSONArray(response.toString());
+
+            for (int i = 0; i < todosArray.length(); i++) {
+                JSONObject todo = todosArray.getJSONObject(i);
+                boolean completed = todo.getBoolean("completed");
+                if (!completed) {
+                    System.out.println("Open Task: " + todo);
+                }
+            }
+        } else {
+            System.out.println("GET request not worked");
+        }
+    }
+}
